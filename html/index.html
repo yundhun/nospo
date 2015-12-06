@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <style>
+    body {
+      font-family: "Trebuchet MS", "Helvetica", "Arial",  "Verdana", "sans-serif";
+      font-size: 80%;
+    }
+  </style>
+  <title>NOSPO</title>
+  <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+  <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+  <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+  <script>
+    if( screen.width <= 480 ) {
+    location.href = '/m_index.html';
+    }
+  </script>
+</head>
+<body>
+
+<div style="width:100%; height:100%; text-align:center; margin-top:150px;">
+<a href="//www.nospo.net"><img src="nospo_logo.png"><br></a>
+<input type="text" style="font-size : 20px;" id="id_002"><br>
+<h style="font-size : 18px;">Ex) Arsenal, Chelsea, 20150406</h><br><br>
+<button id="id_000" style="font-size : 20px;" >Search</button>
+  <div id="id_001" style="font-size : 20px; margin:50px 0px 0px 0px">
+    
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="dialog-confirm" title="Hmm..">
+  Was it good?
+</div>
+
+<script>
+  $( "#dialog-confirm" ).dialog({
+      autoOpen: false,
+      resizable: true,
+      height:150,
+      width:300,
+      modal: true,
+      buttons: {
+        "GOOD": function() {
+          $( this ).dialog( "close" );
+        },
+        "BAD": function() {
+          $( this ).dialog( "close" );
+        }
+      }
+  }); 
+
+  $( "#id_000" ).click(function() {        
+      req_data = $('#id_002').val();
+      if (req_data.replace(/ /g,'') != ''){
+        getSearch($('#id_002').val());  
+      }else{
+        $("#id_001").html(""); //remove old results.
+      }
+      $("#id_002").val('');
+  });
+
+  $("#id_002").keyup(function(){    
+      //console.log($('#id_002').val());
+      req_data = $('#id_002').val();
+      if (req_data.replace(/ /g,'') != ''){
+        getSearch($('#id_002').val());  
+      }else{
+        $("#id_001").html(""); //remove old results.
+      }
+  });
+
+  
+  function getSearch(keyword_arg){  
+    $.ajax({
+      method: "GET",
+      //url: "http://52.88.107.101:8880/searchEngine?keyword="+keyword_arg,
+      url: "/searchEngine?keyword="+keyword_arg,
+      //data: '{ "keyword" : "'+keyword_arg+'"}',
+      //jsonp: "callback",
+      //dataType: "jsonp",
+      dataType: "json",
+      //data:{},
+      success:function(data){
+        //console.log('success');
+        $("#id_001").html(""); //remove old results.
+        $.each(data, function(index, value){
+          //console.log(value);
+          //console.log(value.teamA);
+          //console.log(value.teamB);
+          //console.log(value.dateTime);
+          if(value.url == "DNA"){
+            $("#id_001").append(value.teamA+"&nbsp;<font color='Crimson'>VS</font>&nbsp;"+value.teamB+"&nbsp;<font color='Crimson'>On</font>&nbsp;"+value.dateTime+"&nbsp;<br>"); 
+          }
+          else if(value.url == "NEW"){
+            $("#id_001").append(value.teamA+"&nbsp;<font color='Crimson'>VS</font>&nbsp;"+value.teamB+"&nbsp;<font color='Crimson'>On</font>&nbsp;"+value.dateTime+"&nbsp;<br>");            
+            $("#id_001").append("<input id='newUrl' type='text' style='font-size : 20px;' placeholder='URL'></input>");
+            $("#id_001").append("<a id='id_003' href='#' style='text-decoration: none'>&nbsp;Register!</a><br>");
+            $('#id_003').on('click',function(){
+              //window.location = "/regNew?teamA="+value.teamA+"&teamB="+value.teamB+"&date="+value.dateTime+"&url="+
+              postReg(value.teamA,value.teamB,value.dateTime,$("#newUrl").val())
+            }); 
+
+            //$("#id_001").append("<a href='/regNew?teamA="+value.teamA+"&teamB="+value.teamB+"&date="+value.dateTime+"&url="+$("#regNew").val()+"' style='text-decoration: none'>&nbsp;Register!</a><br>");            
+          }else{
+            $("#id_001").append("<font size='2px'><b>Good:"+value.goodCnt+",Bad:"+value.badCnt+"</b></font>&nbsp;");
+            $("#id_001").append(value.teamA+"&nbsp;<font color='Crimson'>VS</font>&nbsp;"+value.teamB+"&nbsp;<font color='Crimson'>On</font>&nbsp;"+value.dateTime+"&nbsp;<a class='gogo' href='"+value.url+"' target='_blank' style='text-decoration: none'>Click Me!</a><br>");
+            $('.gogo').on('click',function(){
+              $( "#dialog-confirm" ).dialog( "open" );
+            });
+          }
+
+          });
+        },
+      fail:function(receive){
+        console.log('fail');
+        console.log(receive);
+        }
+      })
+  };
+
+  function postReg(teamA,teamB,date,url){  
+    $.ajax({
+      method: "POST",      
+      url: "/regNew",
+      data: { "teamA" : teamA, "teamB": teamB, "date": date, "url": url },
+      dataType: "json",
+      //data:{},
+      success:function(data){
+        $("#id_001").html(""); //remove old results.
+        $("#id_001").append("<font size='2px'><b>Good:0,Bad:0</b></font>&nbsp;");        
+        $("#id_001").append(data.teamA+"&nbsp;<font color='Crimson'>VS</font>&nbsp;"+data.teamB+"&nbsp;<font color='Crimson'>On</font>&nbsp;"+data.dateTime+"&nbsp;<a class='gogo' href='"+data.url+"' target='_blank' style='text-decoration: none'>Click Me!</a><br>");
+        $('.gogo').on('click',function(){
+          $( "#dialog-confirm" ).dialog( "open" );
+        });        
+      },
+      fail:function(receive){
+        console.log('fail');
+        console.log(receive);
+      }
+    });
+  };  
+</script>
+
+</body>
+</html>
