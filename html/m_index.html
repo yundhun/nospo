@@ -32,6 +32,7 @@
 <!-- Modal -->
 <div id="dialog-confirm" title="Hmm..">
   Was it good?
+  <span class='uuid' hidden='hidden'>abcd</span>
 </div>
 
 <script>
@@ -43,9 +44,13 @@
       modal: true,
       buttons: {
         "GOOD": function() {
+          var uuid = $(this).children('.uuid').text();
+          postGoodBadCnt(uuid, 'good');
           $( this ).dialog( "close" );
         },
         "BAD": function() {
+          var uuid = $(this).children('.uuid').text();
+          postGoodBadCnt(uuid, 'bad');
           $( this ).dialog( "close" );
         }
       }
@@ -96,25 +101,19 @@
           }
 
           else{
-            /*
-            $("#id_001").append("<tr>");
-            $("#id_001").append("<td><font size='5px'><b>Good:"+value.goodCnt+",Bad:"+value.badCnt+"</b></font>&nbsp;</td>");
-            $("#id_001").append("<td>"+value.teamA+"</td>");
-            $("#id_001").append("<td>&nbsp;<font color='Crimson'>VS</font>&nbsp;</td>");
-            $("#id_001").append("<td>"+value.teamB+"&nbsp;</td>");
-            $("#id_001").append("<td><font color='Crimson'>On</font>&nbsp;"+value.dateTime+"&nbsp;<a class='gogo' href='"+value.url+"' target='_blank' style='text-decoration: none'>Click Me!</a></td>");
-            $("#id_001").append("</tr>");
-            */
             table_painter += "<tr class='border_bottom'><td valign='top'><font size='5px'><b>Good:"+value.goodCnt+"<br>&nbsp;&nbsp;&nbsp;Bad:"+value.badCnt+"</b></font>&nbsp;</td>";
             table_painter += "<td>"+value.teamA+"</td><td>&nbsp;<font color='Crimson'>VS</font>&nbsp;</td><td>"+value.teamB+"&nbsp;</td>";
-            table_painter += "<td valign='top'><font color='Crimson'>On</font>&nbsp;"+value.dateTime+"&nbsp;<br><a class='gogo' href='"+value.url+"' target='_blank' style='text-decoration: none'>Click Me!</a></td></tr>";
+            table_painter += "<td valign='top'><span class='uuid' hidden='hidden'>"+value.uuid+"</span><font color='Crimson'>On</font>&nbsp;"+value.dateTime+"&nbsp;<br><a class='gogo' href='"+value.url+"' target='_blank' style='text-decoration: none'>Click Me!</a></td></tr>";
           }
 
         });
         
         table_painter += "</table>";
         $("#id_001").append(table_painter);
-        $('.gogo').on('click',function(){
+        $('.gogo').on('click',function(){          
+          var uuid = $(this).parent().children('.uuid').text();
+          //console.log(uuid);
+          $( "#dialog-confirm" ).children('.uuid').text(uuid);
           $( "#dialog-confirm" ).dialog( "open" );
         });        
       },
@@ -139,6 +138,20 @@
           $( "#dialog-confirm" ).dialog( "open" );
         });        
       },
+      fail:function(receive){
+        console.log('fail');
+        console.log(receive);
+      }
+    });
+  };
+
+  function postGoodBadCnt(uuid,goodBadFlg){  
+    $.ajax({
+      method: "POST",      
+      url: "/updateGoodBadCnt",
+      data: { "uuid" : uuid, "goodBadFlg": goodBadFlg },
+      dataType: "json",
+      success:function(data){},
       fail:function(receive){
         console.log('fail');
         console.log(receive);

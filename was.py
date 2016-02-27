@@ -5,6 +5,7 @@ import sqlite3
 import itertools
 import operator
 import datetime
+import uuid
 
 conn = sqlite3.connect('db.db')
 
@@ -153,22 +154,22 @@ class searchEngine(resource.Resource):
         if(found_teamB):
             sql_str = ""
             if(int(teamA) <= int(teamB)):                
-                sql_str = "select  b.name, c.name, a.url, a.date, a.good_cnt, a.bad_cnt from game a, name_collection_eng b, name_collection_eng c where 1=1"
+                sql_str = "select  b.name, c.name, a.url, a.date, a.good_cnt, a.bad_cnt, a.uuid from game a, name_collection_eng b, name_collection_eng c where 1=1"
                 sql_str += " and a.team_a = '"+ teamA + "' and a.team_b = '"+ teamB +"'"
             else:
-                sql_str = "select  c.name, b.name, a.url, a.date, a.good_cnt, a.bad_cnt from game a, name_collection_eng b, name_collection_eng c where 1=1"
+                sql_str = "select  c.name, b.name, a.url, a.date, a.good_cnt, a.bad_cnt, a.uuid from game a, name_collection_eng b, name_collection_eng c where 1=1"
                 sql_str += " and a.team_a = '"+ teamB + "' and a.team_b = '"+ teamA +"'"
             sql_str += " and a.date like '%"+ dateTime +"%'"
             sql_str += " and a.team_a = b.code and a.team_b = c.code order by a.date desc"
         else:
             sql_str = "select * from "
             sql_str += " ("
-            sql_str += " select  b.name, c.name, a.url, a.date, a.good_cnt, a.bad_cnt from game a, name_collection_eng b, name_collection_eng c where 1=1"
+            sql_str += " select  b.name, c.name, a.url, a.date, a.good_cnt, a.bad_cnt, a.uuid from game a, name_collection_eng b, name_collection_eng c where 1=1"
             sql_str += " and a.team_a = '"+ teamA + "'"
             sql_str += " and a.team_a = b.code and a.team_b = c.code "
             sql_str += " and a.date like '%"+ dateTime +"%'"
             sql_str += " union all"
-            sql_str += " select  c.name, b.name, a.url, a.date, a.good_cnt, a.bad_cnt from game a, name_collection_eng b, name_collection_eng c where 1=1"
+            sql_str += " select  c.name, b.name, a.url, a.date, a.good_cnt, a.bad_cnt, a.uuid from game a, name_collection_eng b, name_collection_eng c where 1=1"
             sql_str += " and a.team_b = '"+ teamA + "'"
             sql_str += " and a.team_a = b.code and a.team_b = c.code "
             sql_str += " and a.date like '%"+ dateTime +"%'"
@@ -181,7 +182,6 @@ class searchEngine(resource.Resource):
         results = c.fetchall()
 
         if(len(results) < 1):
-            #sql_str = "select a.name, b.name from name_collection_eng a, name_collection_eng b where a.code = '"+ teamA +"' and b.code = '"+ teamB +"' "
             flg = True
             url_s = "NEW"
             sql_str = "select name from name_collection_eng where code = '"+ teamA +"'"
@@ -212,7 +212,7 @@ class searchEngine(resource.Resource):
             return_keyword.append(r)
         else:
             for result in results:            
-                r = {"teamA":result[0], "teamB":result[1], "url" : result[2], "dateTime" : result[3], "goodCnt" : result[4], "badCnt" : result[5]}
+                r = {"teamA":result[0], "teamB":result[1], "url" : "http://"+result[2], "dateTime" : result[3], "goodCnt" : result[4], "badCnt" : result[5], "uuid" : result[6] }
                 return_keyword.append(r)
    
         #return callback+"("+json.dumps(return_keyword)+")"
@@ -223,11 +223,14 @@ class regNew(resource.Resource):
 
     def render_POST(self, request):
         request.setHeader("content-type", "application/json")
-        print request.args
+        #print request.args
         teamA_s = (request.args['teamA'][0]).decode('utf-8')
         teamB_s = (request.args['teamB'][0]).decode('utf-8')
         date = (request.args['date'][0]).decode('utf-8')
         url = (request.args['url'][0]).decode('utf-8')
+        url = url.lower()
+        url = url.replace('http://','')
+        uuidNew = uuid.uuid1()
 
         teamA = ''
         teamB = ''
@@ -252,22 +255,45 @@ class regNew(resource.Resource):
 
         try:
             if(int(teamA) <= int(teamB)):
-                sql_str = "insert into game('team_a','team_b','date','url') values (%d,%d,'%s','%s')" %(int(teamA), int(teamB), date, url )
+                sql_str = "insert into game('team_a','team_b','date','url','uuid') values (%d,%d,'%s','%s','%s')" %(int(teamA), int(teamB), date, url, str(uuidNew) )
             else:
-                sql_str = "insert into game('team_a','team_b','date','url') values (%d,%d,'%s','%s')" %(int(teamB), int(teamA), date, url )
+                sql_str = "insert into game('team_a','team_b','date','url','uuid') values (%d,%d,'%s','%s','%s')" %(int(teamB), int(teamA), date, url, str(uuidNew) )
             c.execute(sql_str)
             conn.commit()
         except sqlite3.Error, e:
             print "DB Error %s:" % e.args[0]
             return 'False'
 
+        return json.dumps({"teamA":teamA_s, "teamB":teamB_s, "url" : url, "dateTime" : date, "uuid": str(uuidNew)})
 
-        return json.dumps({"teamA":teamA_s, "teamB":teamB_s, "url" : url, "dateTime" : date})
+class updateGoodBadCnt(resource.Resource):
+    isLeaf = True
+
+    def render_POST(self, request):
+        request.setHeader("content-type", "application/json")
+        uuidGet = (request.args['uuid'][0]).decode('utf-8')
+        goodBadFlg = (request.args['goodBadFlg'][0]).decode('utf-8')        
+
+        c = conn.cursor()
+
+        try:
+            if(goodBadFlg == 'good'):
+                sql_str = "update game set good_cnt = ( ( select good_cnt from game where uuid = '%s' ) + 1 )where uuid = '%s'" %(uuidGet, uuidGet)
+            else:
+                sql_str = "update game set bad_cnt = ( ( select bad_cnt from game where uuid = '%s' ) + 1 )where uuid = '%s'" %(uuidGet, uuidGet)
+            c.execute(sql_str)
+            conn.commit()
+        except sqlite3.Error, e:
+            print "DB Error %s:" % e.args[0]
+            return 'False'
+
+        return "{}"
 
 #root = resource.Resource()
 root = static.File("./html")
 root.putChild("searchEngine", searchEngine())
 root.putChild("regNew", regNew())
+root.putChild("updateGoodBadCnt", updateGoodBadCnt())
 root.putChild("test", test())
 #root.default = static.File("./var")
 
