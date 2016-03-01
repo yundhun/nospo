@@ -289,11 +289,34 @@ class updateGoodBadCnt(resource.Resource):
 
         return "{}"
 
+class updateGameUrl(resource.Resource):
+    isLeaf = True
+
+    def render_POST(self, request):
+        request.setHeader("content-type", "application/json")
+        uuidGet = (request.args['uuid'][0]).decode('utf-8')
+        url = (request.args['url'][0]).decode('utf-8')
+        url = url.lower()
+        url = url.replace('http://','')
+
+        c = conn.cursor()
+
+        try:
+            sql_str = "update game set url = '%s' where uuid = '%s'" %(url, uuidGet)           
+            c.execute(sql_str)
+            conn.commit()
+        except sqlite3.Error, e:
+            print "DB Error %s:" % e.args[0]
+            return 'False'
+
+        return "{}"        
+
 #root = resource.Resource()
 root = static.File("./html")
 root.putChild("searchEngine", searchEngine())
 root.putChild("regNew", regNew())
 root.putChild("updateGoodBadCnt", updateGoodBadCnt())
+root.putChild("updateGameUrl", updateGameUrl())
 root.putChild("test", test())
 #root.default = static.File("./var")
 

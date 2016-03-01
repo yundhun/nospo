@@ -23,7 +23,7 @@
 <div id="main_div" style="width:100%; height:100%; text-align:center; margin:50px 0px 0px 0px;">
   <a href="//www.nospo.net"><img src="m_nospo_logo.png"><br></a>
   <input type="text" style="font-size : 65px;" id="id_002" placeholder=""><br>
-  <h style="font-size : 45px;">Ex) Arsenal, Chelsea, 20150531</h><br><br>
+  <h style="font-size : 45px;">Ex) 한화, LG트윈스, 20160401</h><br><br>
   <button id="id_000" style="font-size : 50px;" >Search</button>
   <div id="id_001" style="font-size : 35px; margin:50px 0px 0px 0px">
   </div>
@@ -97,13 +97,22 @@
             $("#id_001").append("<a id='id_003' href='#' style='text-decoration: none'>&nbsp;Register!</a><br>");
             $('#id_003').on('click',function(){
               postReg(value.teamA,value.teamB,value.dateTime,$("#newUrl").val());
-            }); 
+            });
           }
 
           else{
-            table_painter += "<tr class='border_bottom'><td valign='top'><font size='5px'><b>Good:"+value.goodCnt+"<br>&nbsp;&nbsp;&nbsp;Bad:"+value.badCnt+"</b></font>&nbsp;</td>";
+            if(Number(value.goodCnt) >= Number(value.badCnt) ){
+              table_painter += "<tr class='border_bottom'>";
+            }else{
+              table_painter += "<tr>";
+            }
+            table_painter += "<td valign='top'><font size='5px'><b>Good:"+value.goodCnt+"<br>&nbsp;&nbsp;&nbsp;Bad:"+value.badCnt+"</b></font>&nbsp;</td>";
             table_painter += "<td>"+value.teamA+"</td><td>&nbsp;<font color='Crimson'>VS</font>&nbsp;</td><td>"+value.teamB+"&nbsp;</td>";
             table_painter += "<td valign='top'><span class='uuid' hidden='hidden'>"+value.uuid+"</span><font color='Crimson'>On</font>&nbsp;"+value.dateTime+"&nbsp;<br><a class='gogo' href='"+value.url+"' target='_blank' style='text-decoration: none'>Click Me!</a></td></tr>";
+            if(Number(value.goodCnt) < Number(value.badCnt) ){
+            table_painter += "<tr class='border_bottom'><td></td><td colspan='3'><input class='changedUrl' type='text' style='font-size : 50px;' placeholder='URL'></input></td>";
+            table_painter += "<td colspan='2'><span class='uuid' hidden='hidden'>"+value.uuid+"</span><a class='gochange' href='#' style='text-decoration: none'>&nbsp;or Change!</a></td></tr>";
+            }
           }
 
         });
@@ -115,7 +124,12 @@
           //console.log(uuid);
           $( "#dialog-confirm" ).children('.uuid').text(uuid);
           $( "#dialog-confirm" ).dialog( "open" );
-        });        
+        });
+        $('.gochange').on('click',function(){
+            var uuid2 = $(this).parent().children('.uuid').text();
+            var url2 = ( $(this).parent() ).parent().find('.changedUrl').val();
+            postGameUrl(uuid2,url2);
+        });      
       },
       fail:function(receive){
         console.log('fail');
@@ -132,11 +146,7 @@
       dataType: "json",
       success:function(data){
         $("#id_001").html(""); //remove old results.
-        $("#id_001").append("<font size='5px'><b>Good:0,Bad:0</b></font>&nbsp;");        
-        $("#id_001").append(data.teamA+"&nbsp;<font color='Crimson'>VS</font>&nbsp;"+data.teamB+"&nbsp;<font color='Crimson'>On</font>&nbsp;"+data.dateTime+"&nbsp;<a href='"+data.url+"' target='_blank' style='text-decoration: none'>Click Me!</a><br>");
-        $('.gogo').on('click',function(){
-          $( "#dialog-confirm" ).dialog( "open" );
-        });        
+        getSearch($('#id_002').val());        
       },
       fail:function(receive){
         console.log('fail');
@@ -145,19 +155,39 @@
     });
   };
 
-  function postGoodBadCnt(uuid,goodBadFlg){  
+  function postGoodBadCnt(uuid,goodBadFlg){
     $.ajax({
       method: "POST",      
       url: "/updateGoodBadCnt",
       data: { "uuid" : uuid, "goodBadFlg": goodBadFlg },
       dataType: "json",
-      success:function(data){},
+      success:function(data){
+        $("#id_001").html(""); //remove old results.
+        getSearch($('#id_002').val());
+      },
       fail:function(receive){
         console.log('fail');
         console.log(receive);
       }
     });
-  };  
+  };
+
+  function postGameUrl(uuid,url){
+    $.ajax({
+      method: "POST",      
+      url: "/updateGameUrl",
+      data: { "uuid" : uuid, "url": url },
+      dataType: "json",
+      success:function(data){
+        $("#id_001").html(""); //remove old results.
+        getSearch($('#id_002').val());
+      },
+      fail:function(receive){
+        console.log('fail');
+        console.log(receive);
+      }
+    });
+  };
 </script>
 
 </body>
